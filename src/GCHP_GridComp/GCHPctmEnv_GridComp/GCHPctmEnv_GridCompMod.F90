@@ -16,6 +16,7 @@
       use FV_StateMod, only : fv_computeMassFluxes
       use GEOS_FV3_UtilitiesMod, only : A2D2C
       use m_set_eta,  only : set_eta
+      use pFlogger, only: logging, Logger
 
       implicit none
       private
@@ -58,6 +59,8 @@
       real(r8), parameter :: D1_0   = 1.0_r8
       real(r8), parameter :: GPKG   = 1000.0d0
       real(r8), parameter :: MWTAIR =   28.96d0
+      LOGICAL             :: meteorology_vertical_index_is_top_down
+      CLASS(Logger),          POINTER  :: lgr => null()
 
 !-------------------------------------------------------------------------
       CONTAINS
@@ -438,6 +441,16 @@
       call MAPL_GridGet ( esmfGrid, globalCellCountPerDim=dims, RC=STATUS)
       _VERIFY(STATUS)
 
+      lgr => logging%get_logger('GCHPctmEnv')
+
+      call ESMF_ConfigGetAttribute(CF,value=meteorology_vertical_index_is_top_down, &
+      label='METEOROLOGY_VERTICAL_INDEX_IS_TOP_DOWN:', Default=.false., __RC__ )
+      if (meteorology_vertical_index_is_top_down) then
+         call lgr%info('Configured to expect ''top-down'' meteorological data from ''ExtData''')
+      else
+         call lgr%info('Configured to expect ''bottom-up'' meteorological data from ''ExtData''')
+      end if
+
       im = dims(1)
       jm = dims(2)
       km = dims(3)
@@ -593,6 +606,15 @@
       _VERIFY(STATUS)
       call MAPL_GetPointer ( IMPORT,   SPHU1,  'SPHU2', RC=STATUS )
       _VERIFY(STATUS)
+      
+      ! If meteorology vertical index is top down, flip imports coming from ExtData.
+      if (meteorology_vertical_index_is_top_down) then
+         LM = size  (UA,3)
+         UA(:,:,:) = UA(:,:,LM:1:-1)
+         VA(:,:,:) = VA(:,:,LM:1:-1)
+         SPHU0(:,:,:) = SPHU0(:,:,LM:1:-1)
+         SPHU1(:,:,:) = SPHU1(:,:,LM:1:-1)
+      end if
 
       ! Get to the exports...
       ! ---------------------
