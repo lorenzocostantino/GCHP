@@ -97,11 +97,12 @@ The code below shows how to do this by editing ``$HOME/.spack/packages.yaml`` (y
 
 .. code-block:: yaml
 
-   packages:
-    slurm:
-     paths:
-      slurm: /path/to/slurm
-     buildable: False
+packages:
+ slurm:
+  buildable: false
+  externals:
+  - spec: slurm
+    prefix: /path/to/slurm
 
 
 Finding and specifying your system's Slurm installation
